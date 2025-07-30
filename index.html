@@ -90,18 +90,90 @@
       }
     }
 
-    function renderizarPlaneamento(data) {
-      const container = document.getElementById("planeamento");
-      container.innerHTML = "";
+function renderizarPlaneamento(data) {
+  const container = document.getElementById("planeamento");
+  container.innerHTML = "";
 
-      const hoje = new Date().toISOString().split('T')[0];
-      const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  // Criar lista fixa da semana: segunda a domingo da semana selecionada
+  const hoje = new Date();
+  const base = new Date(hoje);
+  base.setDate(base.getDate() + semanaOffset * 7);
+  const day = base.getDay();
+  // Ajusta para segunda-feira
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(base);
+  monday.setDate(base.getDate() + diffToMonday);
 
-      const datas = Object.keys(data).sort();
-      if (datas.length === 0) {
-        container.innerHTML = "<p>Nenhum serviço encontrado para este motorista nesta semana.</p>";
-        return;
-      }
+  const diasSemana = [];
+  for(let i=0; i<7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    diasSemana.push(d);
+  }
+
+  const hojeStr = hoje.toISOString().split('T')[0];
+  const amanhaStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+  diasSemana.forEach(dia => {
+    const dataKey = dia.toISOString().split('T')[0];
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "day-block";
+
+    if (dataKey === hojeStr) dayDiv.classList.add("today");
+    if (dataKey === amanhaStr) dayDiv.classList.add("tomorrow");
+
+    const dateTitle = document.createElement("div");
+    dateTitle.className = "date-title";
+    dateTitle.textContent = dia.toLocaleDateString("pt-PT", {
+      weekday: 'long', day: '2-digit', month: 'short'
+    });
+    dayDiv.appendChild(dateTitle);
+
+    const servicos = data[dataKey] || [];
+    if (servicos.length === 0) {
+      const vazio = document.createElement("div");
+      vazio.textContent = "Nenhum serviço.";
+      vazio.style.fontStyle = "italic";
+      dayDiv.appendChild(vazio);
+    } else {
+      servicos.forEach(servico => {
+        const servDiv = document.createElement("div");
+        servDiv.className = "service";
+
+        // Linha 1: serviço carga → serviço descarga
+        const linha1 = document.createElement("div");
+        linha1.textContent = `${servico["SERVIÇO CARGA"] || ""} → ${servico["SERVIÇO DESCARGA"] || ""}`;
+        servDiv.appendChild(linha1);
+
+        // Linha 2: Viatura e Reboque juntos
+        const linha2 = document.createElement("div");
+        linha2.textContent = `Viatura: ${servico["VIATURA"] || "-"}, Reboque: ${servico["REBOQUE"] || "-"}`;
+        servDiv.appendChild(linha2);
+
+        // Linha 3+: NEI, Resíduo, Observações (se existirem)
+        if (servico["NEI"]) {
+          const nei = document.createElement("div");
+          nei.textContent = `NEI: ${servico["NEI"]}`;
+          servDiv.appendChild(nei);
+        }
+        if (servico["RESÍDUO"]) {
+          const res = document.createElement("div");
+          res.textContent = `Resíduo: ${servico["RESÍDUO"]}`;
+          servDiv.appendChild(res);
+        }
+        if (servico["OBSERVAÇÕES"]) {
+          const obs = document.createElement("div");
+          obs.textContent = `Observações: ${servico["OBSERVAÇÕES"]}`;
+          servDiv.appendChild(obs);
+        }
+
+        dayDiv.appendChild(servDiv);
+      });
+    }
+
+    container.appendChild(dayDiv);
+  });
+}
 
       datas.forEach(dataKey => {
         const dayDiv = document.createElement("div");
