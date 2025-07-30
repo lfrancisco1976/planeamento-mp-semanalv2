@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planeamento Semanal</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    .controls { margin-bottom: 20px; }
+    button, input { margin-right: 5px; padding: 5px; font-size: 14px; }
+    .day-block { margin-bottom: 20px; padding: 15px; border-radius: 10px; background: white; box-shadow: 0 0 10px #ccc; }
+    .today { background-color: #d0f0c0; }
+    .tomorrow { background-color: #fff4b2; }
+    .service { padding: 3px 0; border-bottom: 1px solid #eee; }
+    .date-title { font-weight: bold; margin-bottom: 8px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <label>Motorista: <input type="text" id="motorista" value="João" /></label>
+    <button onclick="alterarSemana(-1)">← Semana Anterior</button>
+    <button onclick="alterarSemana(0)">Semana Atual</button>
+    <button onclick="alterarSemana(1)">Semana Seguinte →</button>
+    <button onclick="carregarPlaneamento()">🔄 Atualizar</button>
+  </div>
+
+  <div id="planeamento">A carregar...</div>
+
+  <script>
+    let semanaOffset = 0;
+    const endpoint = "https://script.google.com/macros/s/AKfycbwBQWGNHjTC5lf-yDuDquV6tbauaUm01tnVKnQ0Gvb1OVrkehXklqwZjrVGPigFZqM1/exec";
+
+    function alterarSemana(offset) {
+      semanaOffset = offset;
+      carregarPlaneamento();
+    }
+
+    async function carregarPlaneamento() {
+      const motorista = document.getElementById("motorista").value;
+      const container = document.getElementById("planeamento");
+      container.innerHTML = "A carregar...";
+
+      const url = `${endpoint}?motorista=${encodeURIComponent(motorista)}&semana=${semanaOffset}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        renderizarPlaneamento(data);
+      } catch (err) {
+        container.innerHTML = "Erro ao carregar dados.";
+        console.error(err);
+      }
+    }
+
+    function renderizarPlaneamento(data) {
+      const container = document.getElementById("planeamento");
+      container.innerHTML = "";
+
+      const hoje = new Date().toISOString().split('T')[0];
+      const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+      const datas = Object.keys(data).sort();
+      if (datas.length === 0) {
+        container.innerHTML = "<p>Nenhum serviço encontrado para esta semana.</p>";
+        return;
+      }
+
+      datas.forEach(dataKey => {
+        const dayDiv = document.createElement("div");
+        dayDiv.className = "day-block";
+        if (dataKey === hoje) dayDiv.classList.add("today");
+        if (dataKey === amanha) dayDiv.classList.add("tomorrow");
+
+        const dateTitle = document.createElement("div");
+        dateTitle.className = "date-title";
+        dateTitle.textContent = new Date(dataKey).toLocaleDateString("pt-PT", {
+          weekday: 'long', day: '2-digit', month: 'short'
+        });
+        dayDiv.appendChild(dateTitle);
+
+        data[dataKey].forEach(servico => {
+          const s = document.createElement("div");
+          s.className = "service";
+          s.textContent =
+            `${servico["SERVIÇO CARGA"] || ""} → ${servico["SERVIÇO DESCARGA"] || ""} | ` +
+            `Viatura: ${servico["VIATURA"] || "-"}, Reboque: ${servico["REBOQUE"] || "-"}` +
+            (servico["NEI"] ? ` | NEI: ${servico["NEI"]}` : "") +
+            (servico["RESÍDUO"] ? ` | Resíduo: ${servico["RESÍDUO"]}` : "") +
+            (servico["OBSERVAÇÕES"] ? ` | Obs: ${servico["OBSERVAÇÕES"]}` : "");
+          dayDiv.appendChild(s);
+        });
+
+        container.appendChild(dayDiv);
+      });
+    }
+
+    carregarPlaneamento();
+  </script>
+</body>
+</html>
