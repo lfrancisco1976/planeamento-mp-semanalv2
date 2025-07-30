@@ -175,7 +175,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwBQWGNHjTC5lf-yDuDquV6tbauaUm01tnVKnQ0Gvb1OVKkehXklqwZjrVGPigFZqM1/exec'; // Seu URL do Apps Script
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzqaJz9HVlGSTmp0bPWBih3YFGcb71kkggPvFHLGm4aCz_nL4eAOvEJIUuxznfc5VOb/exec'; // SEU NOVO URL DO APPS SCRIPT
         const motoristaSelect = document.getElementById('motorista-select');
         const calendarView = document.getElementById('calendar-view');
         const loadingMessage = document.getElementById('loading-message');
@@ -217,7 +217,10 @@
                 console.log("Dados brutos recebidos:", data); // Para depuração
 
                 if (!data || !Array.isArray(data.data) || data.data.length === 0) {
-                    throw new Error("Dados inválidos ou vazios recebidos do script.");
+                    // Permite continuar mesmo que não haja dados, para mostrar os dias vazios
+                    populateMotoristaSelect([]); // Popula com array vazio para limpar o dropdown
+                    filterAndDisplayData([]); // Exibe dias da semana mesmo sem dados
+                    return; // Sai da função após lidar com dados vazios
                 }
 
                 populateMotoristaSelect(data.data);
@@ -260,8 +263,11 @@
                 motoristaSelect.appendChild(option);
             });
 
-            // Seleciona o primeiro motorista por padrão
-            if (motoristaSelect.options.length > 0) {
+            // Seleciona o primeiro motorista por padrão ou o já selecionado se existir
+            const previouslySelected = motoristaSelect.value;
+            if (sortedMotoristas.includes(previouslySelected)) {
+                motoristaSelect.value = previouslySelected;
+            } else if (motoristaSelect.options.length > 0) {
                 motoristaSelect.value = sortedMotoristas[0];
             }
             motoristaSelect.disabled = false;
@@ -294,14 +300,20 @@
                 let serviceDate;
 
                 // Tenta parsear a data em vários formatos
-                if (serviceDateStr.includes('/')) {
+                if (serviceDateStr && serviceDateStr.includes('/')) {
                     const parts = serviceDateStr.split('/');
+                    // Atenção: O construtor Date(ano, mês-1, dia) é mais robusto
                     serviceDate = new Date(parts[2], parts[1] - 1, parts[0]);
-                } else if (serviceDateStr.includes('-')) {
+                } else if (serviceDateStr && serviceDateStr.includes('-')) {
                     serviceDate = new Date(serviceDateStr);
                 } else {
-                    console.warn("Formato de data desconhecido:", serviceDateStr);
+                    console.warn("Formato de data desconhecido ou ausente para:", row);
                     return; // Ignora se não conseguir parsear
+                }
+
+                if (isNaN(serviceDate.getTime())) { // Verifica se a data é válida
+                    console.warn("Data inválida após parse para:", serviceDateStr);
+                    return;
                 }
 
                 serviceDate.setHours(0, 0, 0, 0);
@@ -386,9 +398,11 @@
 
         motoristaSelect.addEventListener('change', () => {
             // Se já temos os dados carregados, apenas filtramos e exibimos novamente
-            // Caso contrário, faremos um fetch completo (redundante se já temos tudo)
-            // Para otimizar, poderíamos guardar os 'allData' em uma variável global
-            // Mas para simplicidade e garantia de dados frescos, faremos um fetch.
+            // Para otimizar, podemos guardar os 'allData' em uma variável global
+            // e chamar filterAndDisplayData(globalAllData) em vez de fetchData()
+            // Isso evita uma nova requisição ao Sheets desnecessária
+            // Para este exemplo, manteremos fetchData para simplificar o fluxo,
+            // mas num ambiente de produção, otimizar seria bom.
             fetchData();
         });
 
