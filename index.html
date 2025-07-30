@@ -5,19 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Planeamento Semanal</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
-    .controls { margin-bottom: 20px; }
-    button, input { margin-right: 5px; padding: 5px; font-size: 14px; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+    select, button { padding: 6px; font-size: 16px; }
     .day-block { margin-bottom: 20px; padding: 15px; border-radius: 10px; background: white; box-shadow: 0 0 10px #ccc; }
     .today { background-color: #d0f0c0; }
     .tomorrow { background-color: #fff4b2; }
-    .service { padding: 3px 0; border-bottom: 1px solid #eee; }
+    .service { padding: 5px 0; border-bottom: 1px solid #eee; font-size: 15px; }
     .date-title { font-weight: bold; margin-bottom: 8px; font-size: 18px; }
+    @media (max-width: 600px) {
+      .controls { flex-direction: column; align-items: flex-start; }
+      select, button { width: 100%; }
+    }
   </style>
 </head>
 <body>
   <div class="controls">
-    <label>Motorista: <input type="text" id="motorista" value="João" /></label>
+    <label>Motorista:
+      <select id="motoristaSelect"></select>
+    </label>
     <button onclick="alterarSemana(-1)">← Semana Anterior</button>
     <button onclick="alterarSemana(0)">Semana Atual</button>
     <button onclick="alterarSemana(1)">Semana Seguinte →</button>
@@ -27,8 +33,9 @@
   <div id="planeamento">A carregar...</div>
 
   <script>
-    let semanaOffset = 0;
     const endpoint = "https://script.google.com/macros/s/AKfycbwBQWGNHjTC5lf-yDuDquV6tbauaUm01tnVKnQ0Gvb1OVrkehXklqwZjrVGPigFZqM1/exec";
+    let semanaOffset = 0;
+    let motoristasDisponiveis = [];
 
     function alterarSemana(offset) {
       semanaOffset = offset;
@@ -36,7 +43,7 @@
     }
 
     async function carregarPlaneamento() {
-      const motorista = document.getElementById("motorista").value;
+      const motorista = document.getElementById("motoristaSelect").value;
       const container = document.getElementById("planeamento");
       container.innerHTML = "A carregar...";
 
@@ -44,10 +51,34 @@
       try {
         const res = await fetch(url);
         const data = await res.json();
+        atualizarListaMotoristas(data);
         renderizarPlaneamento(data);
       } catch (err) {
         container.innerHTML = "Erro ao carregar dados.";
         console.error(err);
+      }
+    }
+
+    function atualizarListaMotoristas(data) {
+      const motoristasUnicos = new Set();
+      Object.values(data).flat().forEach(s => {
+        if (s["MOTORISTA"]) motoristasUnicos.add(s["MOTORISTA"]);
+      });
+
+      const select = document.getElementById("motoristaSelect");
+      const anterior = select.value;
+      select.innerHTML = "";
+
+      motoristasUnicos.forEach(nome => {
+        const opt = document.createElement("option");
+        opt.value = nome;
+        opt.textContent = nome;
+        select.appendChild(opt);
+      });
+
+      // Repor seleção anterior se possível, ou usar primeiro
+      if (motoristasUnicos.size > 0) {
+        select.value = anterior && motoristasUnicos.has(anterior) ? anterior : [...motoristasUnicos][0];
       }
     }
 
