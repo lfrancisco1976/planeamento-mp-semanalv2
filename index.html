@@ -22,7 +22,7 @@
 <body>
   <div class="controls">
     <label>Motorista:
-      <select id="motoristaSelect"></select>
+      <select id="motoristaSelect" onchange="carregarPlaneamento()"></select>
     </label>
     <button onclick="alterarSemana(-1)">← Semana Anterior</button>
     <button onclick="alterarSemana(0)">Semana Atual</button>
@@ -39,46 +39,54 @@
 
     function alterarSemana(offset) {
       semanaOffset = offset;
-      carregarPlaneamento();
+      inicializarMotoristas();
+    }
+
+    async function inicializarMotoristas() {
+      const container = document.getElementById("planeamento");
+      container.innerHTML = "A carregar motoristas...";
+
+      const url = `${endpoint}?semana=${semanaOffset}`; // sem motorista
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        motoristasDisponiveis = [...new Set(Object.values(data).flat().map(s => s["MOTORISTA"]))];
+
+        const select = document.getElementById("motoristaSelect");
+        select.innerHTML = "";
+        if (motoristasDisponiveis.length === 0) {
+          container.innerHTML = "Nenhum motorista encontrado.";
+          return;
+        }
+
+        motoristasDisponiveis.forEach(nome => {
+          const opt = document.createElement("option");
+          opt.value = nome;
+          opt.textContent = nome;
+          select.appendChild(opt);
+        });
+
+        select.value = motoristasDisponiveis[0];
+        carregarPlaneamento();
+      } catch (err) {
+        container.innerHTML = "Erro ao carregar motoristas.";
+        console.error(err);
+      }
     }
 
     async function carregarPlaneamento() {
       const motorista = document.getElementById("motoristaSelect").value;
       const container = document.getElementById("planeamento");
-      container.innerHTML = "A carregar...";
+      container.innerHTML = "A carregar planeamento...";
 
       const url = `${endpoint}?motorista=${encodeURIComponent(motorista)}&semana=${semanaOffset}`;
       try {
         const res = await fetch(url);
         const data = await res.json();
-        atualizarListaMotoristas(data);
         renderizarPlaneamento(data);
       } catch (err) {
         container.innerHTML = "Erro ao carregar dados.";
         console.error(err);
-      }
-    }
-
-    function atualizarListaMotoristas(data) {
-      const motoristasUnicos = new Set();
-      Object.values(data).flat().forEach(s => {
-        if (s["MOTORISTA"]) motoristasUnicos.add(s["MOTORISTA"]);
-      });
-
-      const select = document.getElementById("motoristaSelect");
-      const anterior = select.value;
-      select.innerHTML = "";
-
-      motoristasUnicos.forEach(nome => {
-        const opt = document.createElement("option");
-        opt.value = nome;
-        opt.textContent = nome;
-        select.appendChild(opt);
-      });
-
-      // Repor seleção anterior se possível, ou usar primeiro
-      if (motoristasUnicos.size > 0) {
-        select.value = anterior && motoristasUnicos.has(anterior) ? anterior : [...motoristasUnicos][0];
       }
     }
 
@@ -91,7 +99,7 @@
 
       const datas = Object.keys(data).sort();
       if (datas.length === 0) {
-        container.innerHTML = "<p>Nenhum serviço encontrado para esta semana.</p>";
+        container.innerHTML = "<p>Nenhum serviço encontrado para este motorista nesta semana.</p>";
         return;
       }
 
@@ -124,7 +132,7 @@
       });
     }
 
-    carregarPlaneamento();
+    inicializarMotoristas(); // corre ao carregar a página
   </script>
 </body>
 </html>
