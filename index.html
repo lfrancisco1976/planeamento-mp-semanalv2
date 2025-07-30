@@ -1,210 +1,399 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Planeamento Semanal</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
-    .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
-    select, button { padding: 6px; font-size: 16px; }
-    .day-block { margin-bottom: 20px; padding: 15px; border-radius: 10px; background: white; box-shadow: 0 0 10px #ccc; }
-    .today { background-color: #d0f0c0; }
-    .tomorrow { background-color: #fff4b2; }
-    .service { padding: 5px 0; border-bottom: 1px solid #eee; font-size: 15px; }
-    .date-title { font-weight: bold; margin-bottom: 8px; font-size: 18px; }
-    @media (max-width: 600px) {
-      .controls { flex-direction: column; align-items: flex-start; }
-      select, button { width: 100%; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planeamento Semanal de Transportes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .controls label {
+            font-weight: bold;
+        }
+
+        .controls select,
+        .controls button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .controls button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .day-column {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            min-height: 150px; /* Garante que o espaço seja reservado */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .day-column.today {
+            border-color: #28a745;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .day-column.tomorrow {
+            border-color: #ffc107;
+            box-shadow: 0 0 8px rgba(255, 193, 7, 0.3);
+        }
+
+        .day-header {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .service-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1; /* Permite que a lista de serviços preencha o espaço */
+        }
+
+        .service-item {
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .service-item strong {
+            color: #0056b3;
+        }
+
+        .no-services {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #dc3545;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .controls button,
+            .controls select {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .calendar {
+                grid-template-columns: 1fr; /* Stack columns on smaller screens */
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="controls">
-    <label>Motorista:
-      <select id="motoristaSelect" onchange="carregarPlaneamento()"></select>
-    </label>
-    <button onclick="alterarSemana(-1)">← Semana Anterior</button>
-    <button onclick="alterarSemana(0)">Semana Atual</button>
-    <button onclick="alterarSemana(1)">Semana Seguinte →</button>
-    <button onclick="carregarPlaneamento()">🔄 Atualizar</button>
-  </div>
+    <div class="container">
+        <h1>Planeamento Semanal de Transportes</h1>
 
-  <div id="planeamento">A carregar...</div>
+        <div class="controls">
+            <label for="motorista-select">Selecionar Motorista:</label>
+            <select id="motorista-select"></select>
+            <button id="prev-week-btn">Semana Anterior</button>
+            <button id="current-week-btn">Semana Atual</button>
+            <button id="next-week-btn">Semana Seguinte</button>
+            <button id="refresh-btn">Atualizar</button>
+        </div>
 
-  <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycbwBQWGNHjTC5lf-yDuDquV6tbauaUm01tnVKnQ0Gvb1OVrkehXklqwZjrVGPigFZqM1/exec";
-    let semanaOffset = 0;
-    let motoristasDisponiveis = [];
+        <div id="loading-message" class="loading-message">A carregar dados...</div>
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="calendar-view" class="calendar">
+            </div>
+    </div>
 
-    function alterarSemana(offset) {
-      semanaOffset = offset;
-      inicializarMotoristas();
-    }
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwBQWGNHjTC5lf-yDuDquV6tbauaUm01tnVKnQ0Gvb1OVKkehXklqwZjrVGPigFZqM1/exec'; // Seu URL do Apps Script
+        const motoristaSelect = document.getElementById('motorista-select');
+        const calendarView = document.getElementById('calendar-view');
+        const loadingMessage = document.getElementById('loading-message');
+        const errorMessage = document.getElementById('error-message');
 
-    async function inicializarMotoristas() {
-      const container = document.getElementById("planeamento");
-      container.innerHTML = "A carregar motoristas...";
+        let currentWeekStart = getStartOfWeek(new Date()); // Começa na semana atual
 
-      const url = `${endpoint}?semana=${semanaOffset}`; // sem motorista
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        motoristasDisponiveis = [...new Set(Object.values(data).flat().map(s => s["MOTORISTA"]))];
-
-        const select = document.getElementById("motoristaSelect");
-        select.innerHTML = "";
-        if (motoristasDisponiveis.length === 0) {
-          container.innerHTML = "Nenhum motorista encontrado.";
-          return;
+        // Função auxiliar para obter o início da semana (segunda-feira)
+        function getStartOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Ajusta para segunda-feira (1)
+            d.setDate(diff);
+            d.setHours(0, 0, 0, 0);
+            return d;
         }
 
-        motoristasDisponiveis.forEach(nome => {
-          const opt = document.createElement("option");
-          opt.value = nome;
-          opt.textContent = nome;
-          select.appendChild(opt);
+        // Função auxiliar para formatar datas (dd/mm/yyyy)
+        function formatDate(date) {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        // Função para buscar dados do Google Sheets
+        async function fetchData() {
+            loadingMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+            calendarView.innerHTML = ''; // Limpa o calendário antes de carregar novos dados
+
+            try {
+                const response = await fetch(SCRIPT_URL);
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log("Dados brutos recebidos:", data); // Para depuração
+
+                if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+                    throw new Error("Dados inválidos ou vazios recebidos do script.");
+                }
+
+                populateMotoristaSelect(data.data);
+                filterAndDisplayData(data.data);
+
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                errorMessage.textContent = `Falha ao carregar dados: ${error.message}. Por favor, verifique o URL do script e as permissões.`;
+                errorMessage.style.display = 'block';
+            } finally {
+                loadingMessage.style.display = 'none';
+            }
+        }
+
+        // Preencher o dropdown de motoristas
+        function populateMotoristaSelect(data) {
+            motoristaSelect.innerHTML = ''; // Limpa opções anteriores
+            const motoristas = new Set();
+            data.forEach(row => {
+                if (row.MOTORISTA) {
+                    motoristas.add(row.MOTORISTA);
+                }
+            });
+
+            const sortedMotoristas = Array.from(motoristas).sort();
+
+            if (sortedMotoristas.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Nenhum motorista encontrado';
+                motoristaSelect.appendChild(option);
+                motoristaSelect.disabled = true;
+                return;
+            }
+
+            sortedMotoristas.forEach(motorista => {
+                const option = document.createElement('option');
+                option.value = motorista;
+                option.textContent = motorista;
+                motoristaSelect.appendChild(option);
+            });
+
+            // Seleciona o primeiro motorista por padrão
+            if (motoristaSelect.options.length > 0) {
+                motoristaSelect.value = sortedMotoristas[0];
+            }
+            motoristaSelect.disabled = false;
+        }
+
+        // Filtrar e exibir dados com base no motorista selecionado e semana
+        function filterAndDisplayData(allData) {
+            calendarView.innerHTML = ''; // Limpa o calendário
+            const selectedMotorista = motoristaSelect.value;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Para comparação de data
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+
+            const weekDays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+            const weekDates = [];
+
+            // Obter as datas da semana atual
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(currentWeekStart);
+                date.setDate(currentWeekStart.getDate() + i);
+                weekDates.push(date);
+            }
+
+            // Mapear dados para fácil acesso
+            const servicesByDateAndMotorista = {};
+            allData.forEach(row => {
+                const serviceDateStr = row.DATA; // Assumindo formato 'dd/mm/yyyy' ou 'yyyy-mm-dd' do Sheets
+                let serviceDate;
+
+                // Tenta parsear a data em vários formatos
+                if (serviceDateStr.includes('/')) {
+                    const parts = serviceDateStr.split('/');
+                    serviceDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else if (serviceDateStr.includes('-')) {
+                    serviceDate = new Date(serviceDateStr);
+                } else {
+                    console.warn("Formato de data desconhecido:", serviceDateStr);
+                    return; // Ignora se não conseguir parsear
+                }
+
+                serviceDate.setHours(0, 0, 0, 0);
+
+                if (row.MOTORISTA === selectedMotorista) {
+                    const dateKey = serviceDate.toISOString().split('T')[0]; // Usa YYYY-MM-DD como chave
+                    if (!servicesByDateAndMotorista[dateKey]) {
+                        servicesByDateAndMotorista[dateKey] = [];
+                    }
+                    servicesByDateAndMotorista[dateKey].push(row);
+                }
+            });
+
+            // Criar colunas para cada dia da semana (Segunda a Domingo)
+            for (let i = 0; i < 7; i++) {
+                const date = weekDates[i];
+                const dayIndex = date.getDay(); // 0 para Domingo, 1 para Segunda, etc.
+                const dayName = weekDays[dayIndex];
+                const formattedDate = formatDate(date);
+                const dateKey = date.toISOString().split('T')[0];
+
+                const dayColumn = document.createElement('div');
+                dayColumn.classList.add('day-column');
+
+                if (dateKey === today.toISOString().split('T')[0]) {
+                    dayColumn.classList.add('today');
+                } else if (dateKey === tomorrow.toISOString().split('T')[0]) {
+                    dayColumn.classList.add('tomorrow');
+                }
+
+                dayColumn.innerHTML = `
+                    <div class="day-header">${dayName} - ${formattedDate}</div>
+                    <ul class="service-list" id="services-${dateKey}"></ul>
+                `;
+                calendarView.appendChild(dayColumn);
+
+                const serviceList = dayColumn.querySelector(`#services-${dateKey}`);
+                const servicesForThisDay = servicesByDateAndMotorista[dateKey] || [];
+
+                if (servicesForThisDay.length > 0) {
+                    servicesForThisDay.forEach(service => {
+                        const listItem = document.createElement('li');
+                        listItem.classList.add('service-item');
+                        // Exibir campos sem rótulo, exceto "DATA" e "MOTORISTA"
+                        listItem.innerHTML = `
+                            <strong>Viatura:</strong> ${service.VIATURA || ''}<br>
+                            <strong>Reboque:</strong> ${service.REBOQUE || ''}<br>
+                            <strong>NEI:</strong> ${service.NEI || ''}<br>
+                            <strong>Serviço Carga:</strong> ${service['SERVIÇO CARGA'] || ''}<br>
+                            <strong>Serviço Descarga:</strong> ${service['SERVIÇO DESCARGA'] || ''}<br>
+                            <strong>Resíduo:</strong> ${service.RESÍDUO || ''}<br>
+                            <strong>Observações:</strong> ${service.OBSERVAÇÕES || ''}
+                        `;
+                        serviceList.appendChild(listItem);
+                    });
+                } else {
+                    const noServicesItem = document.createElement('li');
+                    noServicesItem.classList.add('no-services');
+                    noServicesItem.textContent = 'Nenhum serviço agendado.';
+                    serviceList.appendChild(noServicesItem);
+                }
+            }
+        }
+
+        // Listeners para os botões de navegação e seleção de motorista
+        document.getElementById('prev-week-btn').addEventListener('click', () => {
+            currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+            fetchData();
         });
 
-        select.value = motoristasDisponiveis[0];
-        carregarPlaneamento();
-      } catch (err) {
-        container.innerHTML = "Erro ao carregar motoristas.";
-        console.error(err);
-      }
-    }
-
-    async function carregarPlaneamento() {
-      const motorista = document.getElementById("motoristaSelect").value;
-      const container = document.getElementById("planeamento");
-      container.innerHTML = "A carregar planeamento...";
-
-      const url = `${endpoint}?motorista=${encodeURIComponent(motorista)}&semana=${semanaOffset}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        renderizarPlaneamento(data);
-      } catch (err) {
-        container.innerHTML = "Erro ao carregar dados.";
-        console.error(err);
-      }
-    }
-
-function renderizarPlaneamento(data) {
-  const container = document.getElementById("planeamento");
-  container.innerHTML = "";
-
-  // Criar lista fixa da semana: segunda a domingo da semana selecionada
-  const hoje = new Date();
-  const base = new Date(hoje);
-  base.setDate(base.getDate() + semanaOffset * 7);
-  const day = base.getDay();
-  // Ajusta para segunda-feira
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(base);
-  monday.setDate(base.getDate() + diffToMonday);
-
-  const diasSemana = [];
-  for(let i=0; i<7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    diasSemana.push(d);
-  }
-
-  const hojeStr = hoje.toISOString().split('T')[0];
-  const amanhaStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-  diasSemana.forEach(dia => {
-    const dataKey = dia.toISOString().split('T')[0];
-    const dayDiv = document.createElement("div");
-    dayDiv.className = "day-block";
-
-    if (dataKey === hojeStr) dayDiv.classList.add("today");
-    if (dataKey === amanhaStr) dayDiv.classList.add("tomorrow");
-
-    const dateTitle = document.createElement("div");
-    dateTitle.className = "date-title";
-    dateTitle.textContent = dia.toLocaleDateString("pt-PT", {
-      weekday: 'long', day: '2-digit', month: 'short'
-    });
-    dayDiv.appendChild(dateTitle);
-
-    const servicos = data[dataKey] || [];
-    if (servicos.length === 0) {
-      const vazio = document.createElement("div");
-      vazio.textContent = "Nenhum serviço.";
-      vazio.style.fontStyle = "italic";
-      dayDiv.appendChild(vazio);
-    } else {
-      servicos.forEach(servico => {
-        const servDiv = document.createElement("div");
-        servDiv.className = "service";
-
-        // Linha 1: serviço carga → serviço descarga
-        const linha1 = document.createElement("div");
-        linha1.textContent = `${servico["SERVIÇO CARGA"] || ""} → ${servico["SERVIÇO DESCARGA"] || ""}`;
-        servDiv.appendChild(linha1);
-
-        // Linha 2: Viatura e Reboque juntos
-        const linha2 = document.createElement("div");
-        linha2.textContent = `Viatura: ${servico["VIATURA"] || "-"}, Reboque: ${servico["REBOQUE"] || "-"}`;
-        servDiv.appendChild(linha2);
-
-        // Linha 3+: NEI, Resíduo, Observações (se existirem)
-        if (servico["NEI"]) {
-          const nei = document.createElement("div");
-          nei.textContent = `NEI: ${servico["NEI"]}`;
-          servDiv.appendChild(nei);
-        }
-        if (servico["RESÍDUO"]) {
-          const res = document.createElement("div");
-          res.textContent = `Resíduo: ${servico["RESÍDUO"]}`;
-          servDiv.appendChild(res);
-        }
-        if (servico["OBSERVAÇÕES"]) {
-          const obs = document.createElement("div");
-          obs.textContent = `Observações: ${servico["OBSERVAÇÕES"]}`;
-          servDiv.appendChild(obs);
-        }
-
-        dayDiv.appendChild(servDiv);
-      });
-    }
-
-    container.appendChild(dayDiv);
-  });
-}
-
-      datas.forEach(dataKey => {
-        const dayDiv = document.createElement("div");
-        dayDiv.className = "day-block";
-        if (dataKey === hoje) dayDiv.classList.add("today");
-        if (dataKey === amanha) dayDiv.classList.add("tomorrow");
-
-        const dateTitle = document.createElement("div");
-        dateTitle.className = "date-title";
-        dateTitle.textContent = new Date(dataKey).toLocaleDateString("pt-PT", {
-          weekday: 'long', day: '2-digit', month: 'short'
-        });
-        dayDiv.appendChild(dateTitle);
-
-        data[dataKey].forEach(servico => {
-          const s = document.createElement("div");
-          s.className = "service";
-          s.textContent =
-            `${servico["SERVIÇO CARGA"] || ""} → ${servico["SERVIÇO DESCARGA"] || ""} | ` +
-            `Viatura: ${servico["VIATURA"] || "-"}, Reboque: ${servico["REBOQUE"] || "-"}` +
-            (servico["NEI"] ? ` | NEI: ${servico["NEI"]}` : "") +
-            (servico["RESÍDUO"] ? ` | Resíduo: ${servico["RESÍDUO"]}` : "") +
-            (servico["OBSERVAÇÕES"] ? ` | Obs: ${servico["OBSERVAÇÕES"]}` : "");
-          dayDiv.appendChild(s);
+        document.getElementById('next-week-btn').addEventListener('click', () => {
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            fetchData();
         });
 
-        container.appendChild(dayDiv);
-      });
-    }
+        document.getElementById('current-week-btn').addEventListener('click', () => {
+            currentWeekStart = getStartOfWeek(new Date());
+            fetchData();
+        });
 
-    inicializarMotoristas(); // corre ao carregar a página
-  </script>
+        document.getElementById('refresh-btn').addEventListener('click', fetchData);
+
+        motoristaSelect.addEventListener('change', () => {
+            // Se já temos os dados carregados, apenas filtramos e exibimos novamente
+            // Caso contrário, faremos um fetch completo (redundante se já temos tudo)
+            // Para otimizar, poderíamos guardar os 'allData' em uma variável global
+            // Mas para simplicidade e garantia de dados frescos, faremos um fetch.
+            fetchData();
+        });
+
+        // Iniciar o carregamento de dados quando a página carregar
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
 </body>
 </html>
